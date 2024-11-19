@@ -3,6 +3,7 @@
 class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
 {
     protected $_namespace;
+
     protected $_operations = [];
 
     public function init(string $namespace, $sessionName = null): static
@@ -11,10 +12,10 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
         if (session_status() !== PHP_SESSION_ACTIVE) {
             $this->start($sessionName);
         }
-        if (!isset($_SESSION[$namespace])) {
+        if (! isset($_SESSION[$namespace])) {
             $_SESSION[$namespace] = [];
         }
-        if (!isset($_SESSION[$namespace]['__operations'])) {
+        if (! isset($_SESSION[$namespace]['__operations'])) {
             $_SESSION[$namespace]['__operations'] = [];
         }
 
@@ -26,8 +27,8 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
     /**
      * Set session data
      *
-     * @param string|array $key
-     * @param mixed $value
+     * @param  string|array  $key
+     * @param  mixed  $value
      * @return $this
      */
     public function setData($key, $value = null)
@@ -39,13 +40,14 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
         } else {
             $this->_trackOperation('set', $key, $value);
         }
+
         return parent::setData($key, $value);
     }
 
     /**
      * Unset session data
      *
-     * @param string $key
+     * @param  string  $key
      * @return $this
      */
     public function unsetData($key = null)
@@ -59,22 +61,23 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
         } else {
             $this->_trackOperation('unset', $key, null);
         }
+
         return parent::unsetData($key);
     }
 
     /**
      * Track operation for MongoDB updates
      *
-     * @param string $type
-     * @param string $key
-     * @param mixed $value
+     * @param  string  $type
+     * @param  string  $key
+     * @param  mixed  $value
      */
     protected function _trackOperation($type, $key, $value)
     {
         $_SESSION[$this->_namespace]['__operations'][] = [
             'type' => $type,
             'key' => $key,
-            'value' => $value
+            'value' => $value,
         ];
     }
 }

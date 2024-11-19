@@ -2,28 +2,33 @@
 
 namespace Cm\MongoSession;
 
-use MongoDB\Client;
 use MongoDB\BSON\UTCDateTime;
+use MongoDB\Client;
 
 class Backend implements \SessionHandlerInterface
 {
     protected $_mongoClient;
+
     protected $_collection;
+
     protected $_reads;
+
     protected const BOT_PATTERN = '/bot|crawl|slurp|spider|mediapartners/i';
+
     protected const MAX_LIFETIME = 2592000; // 30 days in seconds
+
     protected const BOT_LIFETIME = 30; // 30 seconds for bots
 
     public function __construct()
     {
-        $this->_mongoClient = new Client("mongodb://localhost:27017");
+        $this->_mongoClient = new Client('mongodb://localhost:27017');
         $this->_collection = $this->_mongoClient->selectDatabase('sessions')->selectCollection('sessions');
     }
 
     /**
      * Read session data and update read stats
      *
-     * @param string $sessionId
+     * @param  string  $sessionId
      * @return array
      */
     public function read($sessionId)
@@ -32,18 +37,19 @@ class Backend implements \SessionHandlerInterface
             $result = $this->_collection->findOneAndUpdate(
                 ['_id' => $sessionId],
                 [
-                    '$set' => ['last_read_at' => new UTCDateTime()],
-                    '$inc' => ['reads' => 1]
+                    '$set' => ['last_read_at' => new UTCDateTime],
+                    '$inc' => ['reads' => 1],
                 ],
                 [
                     'returnDocument' => \MongoDB\Operation\FindOneAndUpdate::RETURN_DOCUMENT_AFTER,
-                    'upsert' => true
+                    'upsert' => true,
                 ]
             );
 
             // If session was destroyed, return empty array
             if (isset($result['_destroyed']) && $result['_destroyed'] === true) {
                 $this->_reads = 1;
+
                 return [];
             }
 
@@ -51,9 +57,10 @@ class Backend implements \SessionHandlerInterface
             $this->_reads = $result['reads'] ?? 1;
 
             // Return the session data
-            return ($result['data'] ?? []);
+            return $result['data'] ?? [];
         } catch (\MongoDB\Driver\Exception\Exception $e) {
             Mage::logException($e);
+
             return [];
         }
     }
@@ -68,17 +75,18 @@ class Backend implements \SessionHandlerInterface
         }
 
         $lifetime = $reads > 100 ? self::MAX_LIFETIME : pow($reads, 3) * 30;
+
         return (int) min($lifetime, self::MAX_LIFETIME);
     }
 
     /**
      * Process session data into MongoDB updates
      *
-     * @param string $sessionId
-     * @param array $sessionData
+     * @param  string  $sessionId
+     * @param  array  $sessionData
      * @return bool
      */
-    public function write($sessionId, $sessionData): mixed  
+    public function write($sessionId, $sessionData): mixed
     {
         if (empty($sessionData)) {
             return true;
@@ -88,7 +96,7 @@ class Backend implements \SessionHandlerInterface
             $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
             $lifetime = $this->_calculateLifetime($this->_reads ?? 0, $userAgent);
             $updates = $this->_processSessionData($sessionData);
-            
+
             // Add metadata updates
             $updates['$set']['updated_at'] = new \MongoDB\BSON\UTCDateTime(time() * 1000);
             $updates['$set']['lifetime'] = $lifetime;
@@ -103,6 +111,7 @@ class Backend implements \SessionHandlerInterface
             return $result->isAcknowledged();
         } catch (\MongoDB\Driver\Exception\Exception $e) {
             Mage::logException($e);
+
             return false;
         }
     }
@@ -110,7 +119,7 @@ class Backend implements \SessionHandlerInterface
     /**
      * Process session data into MongoDB update operations
      *
-     * @param array $sessionData
+     * @param  array  $sessionData
      * @return array
      */
     protected function _processSessionData($sessionData)
@@ -121,18 +130,18 @@ class Backend implements \SessionHandlerInterface
 
         foreach ($sessionData as $namespace => $operations) {
             // Non-namespaced data is written directly
-            if (str_starts_with($namespace,'_')) {
-                $sets['data.' . $namespace] = $operations;
+            if (str_starts_with($namespace, '_')) {
+                $sets['data.'.$namespace] = $operations;
             }
 
             // Ignore namespaces that do not conform to the expected format
-            if (!isset($operations['__operations'])) {
+            if (! isset($operations['__operations'])) {
                 continue;
             }
 
             foreach ($operations['__operations'] as $operation) {
-                $key = 'data.' . $namespace . '.' . $operation['key'];
-                
+                $key = 'data.'.$namespace.'.'.$operation['key'];
+
                 if ($operation['type'] === 'set') {
                     $sets[$key] = $operation['value'];
                 } elseif ($operation['type'] === 'unset') {
@@ -142,10 +151,10 @@ class Backend implements \SessionHandlerInterface
             }
         }
 
-        if (!empty($sets)) {
+        if (! empty($sets)) {
             $updates['$set'] = $sets;
         }
-        if (!empty($unsets)) {
+        if (! empty($unsets)) {
             $updates['$unset'] = $unsets;
         }
 
@@ -155,7 +164,7 @@ class Backend implements \SessionHandlerInterface
     /**
      * Mark session as destroyed
      *
-     * @param string $sessionId
+     * @param  string  $sessionId
      * @return bool
      */
     public function destroy($sessionId)
@@ -166,13 +175,15 @@ class Backend implements \SessionHandlerInterface
                 [
                     '$set' => [
                         '_destroyed' => true,
-                        'destroyed_at' => new \MongoDB\BSON\UTCDateTime()
-                    ]
+                        'destroyed_at' => new \MongoDB\BSON\UTCDateTime,
+                    ],
                 ]
             );
+
             return $result->isAcknowledged();
         } catch (\MongoDB\Driver\Exception\Exception $e) {
             Mage::logException($e);
+
             return false;
         }
     }
@@ -180,14 +191,14 @@ class Backend implements \SessionHandlerInterface
     /**
      * Garbage collection
      *
-     * @param int $maxlifetime
+     * @param  int  $maxlifetime
      * @return bool
      */
     public function gc($maxlifetime)
     {
         try {
             $now = time();
-            
+
             // Delete sessions that are either:
             // 1. Destroyed and older than their calculated lifetime
             // 2. Not accessed for longer than their calculated lifetime
@@ -196,34 +207,29 @@ class Backend implements \SessionHandlerInterface
                     [
                         '_destroyed' => true,
                         'destroyed_at' => [
-                            '$lt' => new \MongoDB\BSON\UTCDateTime(($now - $maxlifetime) * 1000)
-                        ]
+                            '$lt' => new \MongoDB\BSON\UTCDateTime(($now - $maxlifetime) * 1000),
+                        ],
                     ],
                     [
                         '$expr' => [
                             '$lt' => [
                                 '$last_read_at',
-                                new \MongoDB\BSON\UTCDateTime(($now - '$lifetime') * 1000)
-                            ]
-                        ]
-                    ]
-                ]
+                                new \MongoDB\BSON\UTCDateTime(($now - '$lifetime') * 1000),
+                            ],
+                        ],
+                    ],
+                ],
             ]);
+
             return $result->isAcknowledged();
         } catch (\MongoDB\Driver\Exception\Exception $e) {
             Mage::logException($e);
+
             return false;
         }
     }
 
-    
-    public function open(string $path, string $name): void
-    {
-    }
+    public function open(string $path, string $name): void {}
 
-    public function close(): void
-    {
-    }
-    
+    public function close(): void {}
 }
-
