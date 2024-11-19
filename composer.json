@@ -1,0 +1,41 @@
+{
+    "name": "colinmollenhour/php-mongodb-lockless-session",
+    "description": "Nearly conflict-free sessions without locking for high concurrency.",
+    "version": "1.0.0",
+    "type": "library",
+    "require": {
+        "php": "^8.1",
+        "mongodb/mongodb": "^1.20"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.0|^10.0|^11.0",
+        "laravel/pint": "^1.0"
+    },
+    "suggest": {
+        "ext-mongodb": "^1.14"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Cm\\MongoSession\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Cm\\MongoSession\\Tests\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Colin Mollenhour",
+            "email": "colin@mollenhour.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "./vendor/bin/phpunit tests",
+        "lint": "./vendor/bin/pint",
+        "inspect": "./vendor/bin/pint --test"
+    }
+}
