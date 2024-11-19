@@ -10,7 +10,7 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
     {
         $this->_namespace = $namespace;
         if (session_status() !== PHP_SESSION_ACTIVE) {
-            $this->start($sessionName);
+            $this->start($sessionName); // TODO
         }
         if (! isset($_SESSION[$namespace])) {
             $_SESSION[$namespace] = [];
@@ -19,9 +19,18 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
             $_SESSION[$namespace]['__operations'] = [];
         }
 
-        $this->validate();
+        $this->validate(); // TODO
 
         return $this;
+    }
+
+    public function getData(string $key, $clear = false)
+    {
+        $data = $_SESSION[$this->_namespace][$key] ?? null;
+        if ($clear) {
+            $this->unsetData($key);
+        }
+        return $data;
     }
 
     /**
@@ -35,13 +44,15 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
     {
         if (is_array($key)) {
             foreach ($key as $k => $v) {
+                $_SESSION[$this->_namespace][$k] = $v;
                 $this->_trackOperation('set', $k, $v);
             }
         } else {
+            $_SESSION[$this->_namespace][$key] = $value;
             $this->_trackOperation('set', $key, $value);
         }
 
-        return parent::setData($key, $value);
+        return $this;
     }
 
     /**
@@ -55,14 +66,16 @@ class Mage_Core_Model_Session_Abstract_MongoDB extends Varien_Object
         if ($key === null) {
             foreach (array_keys($_SESSION[$this->_namespace]) as $k) {
                 if ($k !== '__operations') {
+                    unset($_SESSION[$this->_namespace][$k]);
                     $this->_trackOperation('unset', $k, null);
                 }
             }
         } else {
+            $_SESSION[$this->_namespace][$key] = null;
             $this->_trackOperation('unset', $key, null);
         }
 
-        return parent::unsetData($key);
+        return $this;
     }
 
     /**
